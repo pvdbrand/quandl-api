@@ -1,0 +1,65 @@
+name:                quandl-api
+version:             0.1.0.0
+copyright:           (c) 2014 Peter van den Brand
+homepage:            https://github.com/pvdbrand/quandl-api
+bug-reports:         https://github.com/pvdbrand/quandl-api/issues
+license:             BSD3
+license-file:        LICENSE
+author:              Peter van den Brand <peter@vdbrand.nl>
+maintainer:          Peter van den Brand <peter@vdbrand.nl>
+category:            Data, API, Web
+build-type:          Simple
+cabal-version:       >=1.8
+stability:           experimental
+synopsis:            Quandl.com API library
+description:         This library provides an easy way to download data from Quandl.com.
+
+extra-source-files:
+    README.md
+
+source-repository head
+    type:     git
+    location: git://github.com/pvdbrand/quandl-api.git
+
+library
+    exposed-modules:
+        Data.Quandl
+
+    build-depends:
+        base == 4.*,
+        http-types,
+        http-conduit,
+        blaze-builder,
+        unordered-containers,
+        old-locale,
+        bytestring,
+        text,
+        time,
+        syb,
+        aeson
+
+--        cassava,
+--        vector,
+--        containers,
+--        fsnotify,
+--        process,
+--        directory,
+--        system-filepath,
+--
+--        Chart,
+--        Chart-diagrams,
+--        lens,
+--        data-default-class,
+--        colour,
+--
+--        hmatrix,
+--
+--        foreign-store,
+--        lifted-base,
+--        yesod,
+--        warp,
+--        filepath,
+--        blaze-html
+
+    ghc-options: -Wall -fwarn-tabs -funbox-strict-fields -O2
+
