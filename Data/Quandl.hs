@@ -1,14 +1,40 @@
 {-# LANGUAGE OverloadedStrings, DeriveDataTypeable, TupleSections, FlexibleInstances #-}
+
+-- |
+-- Module: Data.Quandl
+-- Copyright: (c) 2014 Peter van den Brand
+-- License: BSD3
+-- Maintainer: Peter van den Brand <peter@vdbrand.nl>
+-- Stability: experimental
+-- Portability: portable
+--
+-- This library provides an easy way to download data from Quandl.com.
+-- See <http://www.quandl.com/help/api> for detailed information on the Quandl API.
+--
+-- For basic usage, see the 'getTable' function. This function is all you need to download tables.
+--
+-- For more advanced usage, see the 'getTableWith' function. This function allows you
+-- to use query a subset of the data, query multiple tables (multisets),
+-- apply frequency conversions, and apply transformations supported by Quandl.
+
 module Data.Quandl (
+
+        -- * Download a whole table at once
+        getTable,
+
+        -- * Download using API parameters
+        defaultOptions,
+        getTableWith,
+
+        -- * Datatypes
         Options(..),
         Frequency(..),
         Transformation(..),
-        Metadata(..),
         Dataset(..),
-        defaultOptions,
-        getTable,
-        download,
-        downloadRaw,
+        Metadata(..),
+
+        -- * Low-level functions
+        downloadJSON,
         createUrl
     ) where
 
@@ -32,18 +58,21 @@ import Network.HTTP.Conduit (simpleHttp)
 import Network.HTTP.Types.URI (encodePathSegments, renderQueryBuilder)
 import Blaze.ByteString.Builder (toByteString, fromByteString)
 
+-- | API parameters supported by Quandl, for use with the 'getTableWith' function.
+--   See <http://www.quandl.com/help/api> for detailed information.
 data Options = Options {
-        opAuthToken         :: Maybe String,
-        opSortAscending     :: Bool,
-        opExcludeHeaders    :: Bool,
-        opNumRows           :: Maybe Int,
-        opStartDate         :: Maybe Day,
-        opEndDate           :: Maybe Day,
-        opFrequency         :: Maybe Frequency,
-        opTransformation    :: Maybe Transformation,
-        opMetadataOnly      :: Bool
+        opAuthToken         :: Maybe String,            -- ^ The Quandl Auth Token ('Nothing' means no token supplied, limited to 50 requests per day)
+        opSortAscending     :: Bool,                    -- ^ Sort results ascending or descending
+        opNumRows           :: Maybe Int,               -- ^ Limits the number of returned rows ('Nothing' means no limit)
+        opStartDate         :: Maybe Day,               -- ^ Start date of returned results (inclusive, 'Nothing' means no restriction on start date)
+        opEndDate           :: Maybe Day,               -- ^ End date of returned results (inclusive, 'Nothing' means no restriction on end date)
+        opFrequency         :: Maybe Frequency,         -- ^ Desired frequency of returned results ('Nothing' means frequency of original dataset)
+        opTransformation    :: Maybe Transformation,    -- ^ Desired transformation of returned results ('Nothing' means no transformation)
+        opMetadataOnly      :: Bool                     -- ^ Only return metadata, do not return any data (only works for single table queries)
     } deriving (Eq, Ord, Show, Data, Typeable)
 
+-- | Desired frequency of returned results.
+--   See <http://www.quandl.com/help/api> for detailed information.
 data Frequency
     = Daily
     | Weekly 
@@ -52,6 +81,8 @@ data Frequency
     | Annual 
     deriving (Eq, Ord, Show, Data, Typeable)
 
+-- | Desired transformation of returned results.
+--   See <http://www.quandl.com/help/api> for detailed information.
 data Transformation
     = Diff 
     | RDiff 
@@ -59,26 +90,29 @@ data Transformation
     | Normalize 
     deriving (Eq, Ord, Show, Data, Typeable)
 
+-- | Metadata of a table. 
+--   Only returned by Quandl when downloading from a single table.
 data Metadata = Metadata {
-        meId            :: Int,
-        meSourceCode    :: String,
-        meTableCode     :: String,
-        meSourceName    :: T.Text,
-        meTableName     :: T.Text,
-        meUrlName       :: T.Text,
-        meDescription   :: T.Text,
-        meSourceUrl     :: T.Text,
-        meUpdatedAt     :: UTCTime,
-        mePrivate       :: Bool
+        meId            :: Int,         -- ^ Table ID
+        meSourceCode    :: String,      -- ^ Source code (can be used as parameter to 'getTable' and 'getTableWith')
+        meTableCode     :: String,      -- ^ Table code (can be used as parameter to 'getTable' and 'getTableWith')
+        meSourceName    :: T.Text,      -- ^ Human-readable name of the source
+        meTableName     :: T.Text,      -- ^ Human-readable name of the table
+        meUrlName       :: T.Text,      -- ^ Urlized name of the table as used on Quandl.com
+        meDescription   :: T.Text,      -- ^ Description of the table
+        meSourceUrl     :: T.Text,      -- ^ URL of the original data source
+        meUpdatedAt     :: UTCTime,     -- ^ Timestamp of latest update
+        mePrivate       :: Bool         -- ^ Private or public table
     } deriving (Eq, Ord, Show, Data, Typeable)
 
+-- | Results from a Quandl API call.
 data Dataset = Dataset {
-        daTable         :: Maybe Metadata,
-        daData          :: [[T.Text]],
-        daFromDate      :: Day,
-        daToDate        :: Day,
-        daFrequency     :: T.Text, -- Frequency? Either String Frequency?
-        daColumnNames   :: [T.Text]
+        daTable         :: Maybe Metadata,      -- ^ Metadata of the table ('Nothing' if fields from multiple tables are downloaded)
+        daColumnNames   :: [T.Text],            -- ^ The column names of the table
+        daData          :: [[T.Text]],          -- ^ The contents of the table
+        daFromDate      :: Day,                 -- ^ The starting date of the returned data (inclusive)
+        daToDate        :: Day,                 -- ^ The ending date of the returned data (inclusive)
+        daFrequency     :: T.Text               -- ^ The frequency of the returned data (daily, monthly, etc)
     } deriving (Eq, Show, Data, Typeable)
 
 -------------------------------------------------------------------------------
@@ -124,21 +158,23 @@ instance FromJSON Metadata where
 instance FromJSON Dataset where
     parseJSON o@(Object v) = Dataset <$>
         parseMetadata o <*>
+        v .: "column_names" <*>
         (asRows <$> v .:? "data") <*>
         (asDay  <$> v .: "from_date") <*>
         (asDay  <$> v .: "to_date") <*>
-        v .: "frequency" <*>
-        v .: "column_names"
+        v .: "frequency"
     parseJSON _ = mzero
 
 -------------------------------------------------------------------------------
 -- Public functions
 
+-- | Default options to use for Quandl API calls.
+--   The default options do not use an auth token
+--   and will return all rows in descending order.
 defaultOptions :: Options
 defaultOptions = Options {
     opAuthToken         = Nothing,
-    opSortAscending     = True,
-    opExcludeHeaders    = False,
+    opSortAscending     = False,
     opNumRows           = Nothing,
     opStartDate         = Nothing,
     opEndDate           = Nothing,
@@ -147,15 +183,56 @@ defaultOptions = Options {
     opMetadataOnly      = False
 }
 
-getTable :: String -> String -> IO (Maybe Dataset)
-getTable source table = decode' <$> downloadRaw defaultOptions [(source, table, Nothing)]
+-- | Download all rows and columns from a single table.
+--   To get all data points for the dataset FRED/GDP:
+--
+--   > getTable "FRED" "GDP" Nothing
+--
+--   Registered users should include their auth_token, like this:
+--
+--   > getTable "FRED" "GDP" (Just "dsahFHUiewjjd")
+getTable :: String              -- ^ Quandl code for the source
+         -> String              -- ^ Quandl code for the table
+         -> Maybe String        -- ^ Auth code
+         -> IO (Maybe Dataset)  -- ^ Dataset returned by Quandl, or 'Nothing' if parsing failed
+getTable source table auth = decode' <$> downloadJSON (defaultOptions { opAuthToken = auth }) [(source, table, Nothing)]
 
-download :: Options -> [(String, String, Maybe Int)] -> IO (Maybe Dataset)
-download options items = decode' <$> downloadRaw options items
+-- | Download data from Quandl using the full API.
+--   This function supports all data manipulation options, plus downloading from multiple datasets (multisets).
+--
+--   For example, here is the annual percentage return for AAPL stock over the previous decade, in ascending date order:
+--
+--   > import Data.Quandl
+--   > import Data.Time (fromGregorian)
+--   > getTableWith (defaultOptions {opSortAscending  = True, 
+--   >                               opStartDate      = Just (fromGregorian 2000 1 1), 
+--   >                               opEndDate        = Just (fromGregorian 2010 1 1), 
+--   >                               opFrequency      = Just Annual, 
+--   >                               opTransformation = Just RDiff})
+--   >              [("WIKI", "AAPL", Just 4)]  -- Just 4 means we only want the 4'th column (Close price)
+--
+--   You can pull data from multiple datasets (or from multiple columns in a single dataset) using this function as well.
+--   In the example below, we combine US GDP from FRED\/GDP, crude oil spot prices from DOE\/RWTC, and Apple closing prices from WIKI\/AAPL. 
+--   We are going to convert all of them to annual percentage changes, and look only at data for the last 10 years.
+--
+--   > import Data.Quandl
+--   > getTableWith (defaultOptions {opNumRows        = Just 10,
+--   >                               opFrequency      = Just Annual,
+--   >                               opTransformation = Just RDiff})
+--   >              [("FRED", "GDP", Just 1), ("DOE", "RWTC", Just 1), ("WIKI", "AAPL", Just 4)]
+--
+--   Please note that Quandl does not return the table metadata when pulling data from multiple datasets.
+--   In that case the 'daTable' field of the returned 'Dataset' will be 'Nothing'.
+getTableWith :: Options                         -- ^ API parameters
+             -> [(String, String, Maybe Int)]   -- ^ List of (source, table, column) items to retrieve. 'Nothing' retrieves all columns.
+             -> IO (Maybe Dataset)              -- ^ Dataset returned by Quandl, or 'Nothing' if parsing failed
+getTableWith options items = decode' <$> downloadJSON options items
 
-downloadRaw :: Options -> [(String, String, Maybe Int)] -> IO L.ByteString
-downloadRaw options items = simpleHttp $ createUrl options items
+-- | Returns unparsed JSON from a Quandl API call.
+downloadJSON :: Options -> [(String, String, Maybe Int)] -> IO L.ByteString
+downloadJSON options items = simpleHttp $ createUrl options items
 
+-- | Construct a URL given the various API parameter options.
 createUrl :: Options -> [(String, String, Maybe Int)] -> String
 createUrl options items =
     let pathSegs = case items of
@@ -174,7 +251,6 @@ createUrl options items =
                     ("transformation", fmap (map toLower . show) . opTransformation)] ++
                 concatMap param [
                     ("sort_order",      if opSortAscending options then "asc" else "desc"),
-                    ("exclude_headers", if opExcludeHeaders options then "true" else "false"),
                     ("exclude_data",    if opMetadataOnly options then "true" else "false")
                 ]
         maybeParam (k, fn) = maybe [] (param . (k,)) $ fn options

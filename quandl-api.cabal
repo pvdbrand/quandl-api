@@ -38,28 +38,5 @@ library
         syb,
         aeson
 
---        cassava,
---        vector,
---        containers,
---        fsnotify,
---        process,
---        directory,
---        system-filepath,
---
---        Chart,
---        Chart-diagrams,
---        lens,
---        data-default-class,
---        colour,
---
---        hmatrix,
---
---        foreign-store,
---        lifted-base,
---        yesod,
---        warp,
---        filepath,
---        blaze-html
-
     ghc-options: -Wall -fwarn-tabs -funbox-strict-fields -O2
 
