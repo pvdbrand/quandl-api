@@ -12,10 +12,12 @@ This library provides an easy way to download data from Quandl.com in Haskell.
 The `getTable` function is all you need to download tables.
 To get all data points for the dataset FRED/GDP:
 
+    import Data.Quandl
     getTable "FRED" "GDP" Nothing
 
 Registered users should include their auth_token, like this:
 
+    import Data.Quandl
     getTable "FRED" "GDP" (Just "dsahFHUiewjjd")
 
 ## Advanced Usage
