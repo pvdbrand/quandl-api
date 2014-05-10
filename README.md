@@ -2,6 +2,11 @@
 
 This library provides an easy way to download data from Quandl.com in Haskell.
 
+## Installation
+
+* Install the [Haskell Platform](http://www.haskell.org/platform/)
+* `cabal install quandl-api`
+
 ## Basic Usage
 
 The `getTable` function is all you need to download tables.
