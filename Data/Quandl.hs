@@ -26,12 +26,18 @@ module Data.Quandl (
         defaultOptions,
         getTableWith,
 
+        -- * Search for a table
+        search,
+
         -- * Datatypes
         Options(..),
         Frequency(..),
         Transformation(..),
         Dataset(..),
         Metadata(..),
+        SearchSource(..),
+        SearchDoc(..),
+        SearchPage(..),
 
         -- * Low-level functions
         downloadJSON,
@@ -115,6 +121,40 @@ data Dataset = Dataset {
         daFrequency     :: T.Text               -- ^ The frequency of the returned data (daily, monthly, etc)
     } deriving (Eq, Show, Data, Typeable)
 
+-- | Results from Search calls.
+data SearchSource = SearchSource {
+        ssName          :: T.Text,              -- ^ Name of the source
+        ssId            :: Int,                 -- ^ Source ID
+        ssDescription   :: T.Text,              -- ^ Description of source
+        ssHost          :: T.Text,              -- ^ Source Host site
+        ssDatasetsCount :: Int,                 -- ^ count of datasets on host
+        ssCode          :: T.Text               -- ^ Code to use in API.
+    } deriving (Eq, Show, Data, Typeable)
+
+data SearchDoc = SearchDoc {
+        sdSourceCode       :: T.Text,           -- ^ Source code to use in API.
+        sdDisplayUrl       :: Maybe T.Text,     -- ^ URL to fetch original data from.
+        sdPrivate          :: Bool,             -- ^ Whether or not data is private
+        sdUrlizeName       :: T.Text,           -- ^ Url encoded doc name.
+        sdName             :: T.Text,           -- ^ Doc name.
+        sdFromDate         :: Day,              -- ^ First date in source.
+        sdDescription      :: T.Text,           -- ^ Description of data.
+        sdColumnNames      :: [T.Text],         -- ^ Names of columns in data.
+        sdFrequency        :: T.Text,           -- ^ Frequency of updates.
+        sdSourceName       :: T.Text,           -- ^ Name of source database.
+        sdUpdatedAt        :: UTCTime,          -- ^ Time of most recent updated.
+        sdToDate           :: Day,              -- ^ Last day data is available.
+        sdCode             :: T.Text            -- ^ Doc code to use in API.
+    } deriving (Show, Eq, Data, Typeable)
+
+data SearchPage = SearchPage {
+        spTotalCount  :: Int,                   -- ^ Number of results available
+        spCurrentPage :: Int,                   -- ^ Current page of results
+        spPerPage     :: Int,                   -- ^ Results per page
+        spSources     :: [SearchSource],        -- ^ Metadata for sources.
+        spDocs        :: [SearchDoc]            -- ^ Actual documents found.
+    } deriving (Eq, Show, Data, Typeable)
+
 -------------------------------------------------------------------------------
 -- JSON Parsers
 
@@ -163,6 +203,42 @@ instance FromJSON Dataset where
         (asDay  <$> v .: "from_date") <*>
         (asDay  <$> v .: "to_date") <*>
         v .: "frequency"
+    parseJSON _ = mzero
+
+instance FromJSON SearchSource where
+    parseJSON (Object v) = SearchSource <$>
+        v .: "name" <*>
+        v .: "id" <*>
+        v .: "description" <*>
+        v .: "host" <*>
+        v .: "datasets_count" <*>
+        v .: "code"
+    parseJSON _ = mzero
+
+instance FromJSON SearchDoc where
+    parseJSON (Object v) = SearchDoc <$>
+        v .: "source_code" <*>
+        v .: "display_url" <*>
+        v .: "private" <*>
+        v .: "urlize_name" <*>
+        v .: "name" <*>
+        (asDay <$> v .:"from_date") <*>
+        v .: "description" <*>
+        v .: "column_names" <*>
+        v .: "frequency" <*>
+        v .: "source_name" <*>
+        (asUTCTime <$> v .: "updated_at" ) <*>
+        (asDay <$> v .: "to_date") <*>
+        v .: "code"
+    parseJSON _ = mzero
+
+instance FromJSON SearchPage where
+    parseJSON (Object v) = SearchPage <$>
+        v .: "total_count" <*>
+        v .: "current_page" <*>
+        v .: "per_page" <*>
+        v .: "sources" <*>
+        v .: "docs"
     parseJSON _ = mzero
 
 -------------------------------------------------------------------------------
@@ -265,3 +341,17 @@ createColumns items =
     let toItem (source, table, column) = map toUpper source ++ "." ++ map toUpper table ++ (case column of { Nothing -> ""; Just c -> "." ++ show c })
     in  intercalate "," $ map toItem items
 
+-- | Search for terms, returning given page
+search :: [String]                     -- ^ List of search terms
+          -> Maybe String              -- ^ Auth Token
+          -> Maybe Int                 -- ^ Page number to display or Nothing
+          -> IO (Maybe SearchPage)     -- ^ Search results from Quandl, or Nothing if parsing failed.
+search terms token page = decode' <$> simpleHttp makeUrl where
+  query = concatMap param [Just ("query", intercalate "+" terms),
+                           fmap (\t -> ("auth_token", t)) token,
+                           fmap (\p -> ("page", show p))  page]
+  param (Just (k, v)) = [(BC.pack k, Just $ BC.pack v)]
+  param Nothing       = []
+  makeUrl = BC.unpack $ toByteString $
+            fromByteString "http://www.quandl.com/api/v1/datasets.json" <>
+            renderQueryBuilder True query
