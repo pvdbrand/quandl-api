@@ -347,7 +347,7 @@ search :: [String]                     -- ^ List of search terms
           -> Maybe Int                 -- ^ Page number to display or Nothing
           -> Maybe Int                 -- ^ Number to display per page or Nothing
           -> IO (Maybe SearchPage)     -- ^ Search results from Quandl, or Nothing if parsing failed.
-search terms token page per_page = decode' <$> simpleHttp makeUrl where
+search terms token per_page page = decode' <$> simpleHttp makeUrl where
   query = concatMap param [Just ("query", intercalate "+" terms),
                            fmap (\t -> ("auth_token", t)) token,
                            fmap (\p -> ("page", show p))  page,
