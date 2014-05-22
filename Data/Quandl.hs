@@ -345,11 +345,13 @@ createColumns items =
 search :: [String]                     -- ^ List of search terms
           -> Maybe String              -- ^ Auth Token
           -> Maybe Int                 -- ^ Page number to display or Nothing
+          -> Maybe Int                 -- ^ Number to display per page or Nothing
           -> IO (Maybe SearchPage)     -- ^ Search results from Quandl, or Nothing if parsing failed.
-search terms token page = decode' <$> simpleHttp makeUrl where
+search terms token page per_page = decode' <$> simpleHttp makeUrl where
   query = concatMap param [Just ("query", intercalate "+" terms),
                            fmap (\t -> ("auth_token", t)) token,
-                           fmap (\p -> ("page", show p))  page]
+                           fmap (\p -> ("page", show p))  page,
+                           fmap (\p -> ("per_page", show p)) per_page]
   param (Just (k, v)) = [(BC.pack k, Just $ BC.pack v)]
   param Nothing       = []
   makeUrl = BC.unpack $ toByteString $
