@@ -344,8 +344,8 @@ createColumns items =
 -- | Search for terms, returning given page
 search :: [String]                     -- ^ List of search terms
           -> Maybe String              -- ^ Auth Token
-          -> Maybe Int                 -- ^ Page number to display or Nothing
           -> Maybe Int                 -- ^ Number to display per page or Nothing
+          -> Maybe Int                 -- ^ Page number to display or Nothing
           -> IO (Maybe SearchPage)     -- ^ Search results from Quandl, or Nothing if parsing failed.
 search terms token per_page page = decode' <$> simpleHttp makeUrl where
   query = concatMap param [Just ("query", intercalate "+" terms),
