@@ -16,6 +16,7 @@ description:         This library provides an easy way to download data from Qua
 
 extra-source-files:
     README.md
+    CHANGELOG.md
 
 source-repository head
     type:     git
