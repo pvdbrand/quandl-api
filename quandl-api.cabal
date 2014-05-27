@@ -29,7 +29,6 @@ library
         base == 4.*,
         http-types,
         http-conduit,
-        HTTP,
         blaze-builder,
         unordered-containers,
         old-locale,
