@@ -1,5 +1,5 @@
 name:                quandl-api
-version:             0.2.0.0
+version:             0.2.1.0
 copyright:           (c) 2014 Peter van den Brand
 homepage:            https://github.com/pvdbrand/quandl-api
 bug-reports:         https://github.com/pvdbrand/quandl-api/issues
@@ -32,7 +32,7 @@ library
         http-conduit,
         blaze-builder,
         unordered-containers,
-        old-locale,
+        time-locale-compat,
         bytestring,
         text,
         time,

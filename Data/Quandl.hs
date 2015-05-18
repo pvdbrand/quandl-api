@@ -58,7 +58,7 @@ import Data.Aeson (decode', Value(..), (.:), (.:?), FromJSON(..))
 import Data.Aeson.Types (Parser)
 import Control.Monad (mzero)
 import Control.Applicative ((<$>), (<*>), pure)
-import System.Locale (defaultTimeLocale)
+import Data.Time.Locale.Compat (defaultTimeLocale)
 
 import Network.HTTP.Conduit (simpleHttp)
 import Network.HTTP.Types.URI (encodePathSegments, renderQueryBuilder)
