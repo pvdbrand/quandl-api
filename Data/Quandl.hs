@@ -106,7 +106,7 @@ data Metadata = Metadata {
         meTableName     :: T.Text,      -- ^ Human-readable name of the table
         meUrlName       :: T.Text,      -- ^ Urlized name of the table as used on Quandl.com
         meDescription   :: T.Text,      -- ^ Description of the table
-        meSourceUrl     :: T.Text,      -- ^ URL of the original data source
+        meSourceUrl     :: Maybe T.Text, -- ^ URL of the original data source
         meUpdatedAt     :: UTCTime,     -- ^ Timestamp of latest update
         mePrivate       :: Bool         -- ^ Private or public table
     } deriving (Eq, Ord, Show, Data, Typeable)
@@ -114,7 +114,7 @@ data Metadata = Metadata {
 -- | Results from a Quandl API call.
 data Dataset = Dataset {
         daTable         :: Maybe Metadata,      -- ^ Metadata of the table ('Nothing' if fields from multiple tables are downloaded)
-        daColumnNames   :: [T.Text],            -- ^ The column names of the table
+        daColumnNames   :: [Maybe T.Text],      -- ^ The column names of the table
         daData          :: [[T.Text]],          -- ^ The contents of the table
         daFromDate      :: Day,                 -- ^ The starting date of the returned data (inclusive)
         daToDate        :: Day,                 -- ^ The ending date of the returned data (inclusive)
