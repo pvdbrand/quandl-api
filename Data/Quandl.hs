@@ -107,8 +107,7 @@ data Metadata = Metadata {
         meUrlName       :: T.Text,      -- ^ Urlized name of the table as used on Quandl.com
         meDescription   :: T.Text,      -- ^ Description of the table
         meSourceUrl     :: T.Text,      -- ^ URL of the original data source
-        meUpdatedAt     :: UTCTime,     -- ^ Timestamp of latest update
-        mePrivate       :: Bool         -- ^ Private or public table
+        meUpdatedAt     :: UTCTime      -- ^ Timestamp of latest update
     } deriving (Eq, Ord, Show, Data, Typeable)
 
 -- | Results from a Quandl API call.
@@ -191,8 +190,7 @@ instance FromJSON Metadata where
         v .: "urlize_name" <*>
         v .: "description" <*>
         v .: "display_url" <*>
-        (asUTCTime <$> v .: "updated_at") <*>
-        v .: "private"
+        (asUTCTime <$> v .: "updated_at")
     parseJSON _ = mzero
 
 instance FromJSON Dataset where
