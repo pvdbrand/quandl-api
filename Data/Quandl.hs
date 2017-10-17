@@ -133,7 +133,6 @@ data SearchSource = SearchSource {
 data SearchDoc = SearchDoc {
         sdSourceCode       :: T.Text,           -- ^ Source code to use in API.
         sdDisplayUrl       :: Maybe T.Text,     -- ^ URL to fetch original data from.
-        sdPrivate          :: Bool,             -- ^ Whether or not data is private
         sdUrlizeName       :: T.Text,           -- ^ Url encoded doc name.
         sdName             :: T.Text,           -- ^ Doc name.
         sdFromDate         :: Day,              -- ^ First date in source.
@@ -150,7 +149,6 @@ data SearchPage = SearchPage {
         spTotalCount  :: Int,                   -- ^ Number of results available
         spCurrentPage :: Int,                   -- ^ Current page of results
         spPerPage     :: Int,                   -- ^ Results per page
-        spSources     :: [SearchSource],        -- ^ Metadata for sources.
         spDocs        :: [SearchDoc]            -- ^ Actual documents found.
     } deriving (Eq, Show, Data, Typeable)
 
@@ -217,7 +215,6 @@ instance FromJSON SearchDoc where
     parseJSON (Object v) = SearchDoc <$>
         v .: "source_code" <*>
         v .: "display_url" <*>
-        v .: "private" <*>
         v .: "urlize_name" <*>
         v .: "name" <*>
         (asDay <$> v .:"from_date") <*>
@@ -235,7 +232,6 @@ instance FromJSON SearchPage where
         v .: "total_count" <*>
         v .: "current_page" <*>
         v .: "per_page" <*>
-        v .: "sources" <*>
         v .: "docs"
     parseJSON _ = mzero
 
