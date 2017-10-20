@@ -107,8 +107,7 @@ data Metadata = Metadata {
         meUrlName       :: T.Text,      -- ^ Urlized name of the table as used on Quandl.com
         meDescription   :: T.Text,      -- ^ Description of the table
         meSourceUrl     :: T.Text,      -- ^ URL of the original data source
-        meUpdatedAt     :: UTCTime,     -- ^ Timestamp of latest update
-        mePrivate       :: Bool         -- ^ Private or public table
+        meUpdatedAt     :: UTCTime      -- ^ Timestamp of latest update
     } deriving (Eq, Ord, Show, Data, Typeable)
 
 -- | Results from a Quandl API call.
@@ -134,7 +133,6 @@ data SearchSource = SearchSource {
 data SearchDoc = SearchDoc {
         sdSourceCode       :: T.Text,           -- ^ Source code to use in API.
         sdDisplayUrl       :: Maybe T.Text,     -- ^ URL to fetch original data from.
-        sdPrivate          :: Bool,             -- ^ Whether or not data is private
         sdUrlizeName       :: T.Text,           -- ^ Url encoded doc name.
         sdName             :: T.Text,           -- ^ Doc name.
         sdFromDate         :: Day,              -- ^ First date in source.
@@ -151,7 +149,6 @@ data SearchPage = SearchPage {
         spTotalCount  :: Int,                   -- ^ Number of results available
         spCurrentPage :: Int,                   -- ^ Current page of results
         spPerPage     :: Int,                   -- ^ Results per page
-        spSources     :: [SearchSource],        -- ^ Metadata for sources.
         spDocs        :: [SearchDoc]            -- ^ Actual documents found.
     } deriving (Eq, Show, Data, Typeable)
 
@@ -191,8 +188,7 @@ instance FromJSON Metadata where
         v .: "urlize_name" <*>
         v .: "description" <*>
         v .: "display_url" <*>
-        (asUTCTime <$> v .: "updated_at") <*>
-        v .: "private"
+        (asUTCTime <$> v .: "updated_at")
     parseJSON _ = mzero
 
 instance FromJSON Dataset where
@@ -219,7 +215,6 @@ instance FromJSON SearchDoc where
     parseJSON (Object v) = SearchDoc <$>
         v .: "source_code" <*>
         v .: "display_url" <*>
-        v .: "private" <*>
         v .: "urlize_name" <*>
         v .: "name" <*>
         (asDay <$> v .:"from_date") <*>
@@ -237,7 +232,6 @@ instance FromJSON SearchPage where
         v .: "total_count" <*>
         v .: "current_page" <*>
         v .: "per_page" <*>
-        v .: "sources" <*>
         v .: "docs"
     parseJSON _ = mzero
 
