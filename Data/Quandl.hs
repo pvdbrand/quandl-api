@@ -50,14 +50,12 @@ import qualified Data.Text as T
 import qualified Data.HashMap.Strict as H
 
 import Data.Char (toLower, toUpper)
-import Data.Time (UTCTime, Day, readTime)
-import Data.Monoid ((<>))
+import Data.Time (UTCTime, Day, parseTimeOrError)
 import Data.Generics (Data, Typeable)
 import Data.List (intercalate)
 import Data.Aeson (decode', Value(..), (.:), (.:?), FromJSON(..))
 import Data.Aeson.Types (Parser)
 import Control.Monad (mzero)
-import Control.Applicative ((<$>), (<*>), pure)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 
 import Network.HTTP.Conduit (simpleHttp)
@@ -167,10 +165,10 @@ asRows (Just x) = map (map convert) x
         convert (Null)      = T.empty
 
 asUTCTime :: String -> UTCTime
-asUTCTime = readTime defaultTimeLocale "%FT%T%QZ"
+asUTCTime = parseTimeOrError True defaultTimeLocale "%FT%T%QZ"
 
 asDay :: String -> Day
-asDay = readTime defaultTimeLocale "%F"
+asDay = parseTimeOrError True defaultTimeLocale "%F"
 
 parseMetadata :: Value -> Parser (Maybe Metadata)
 parseMetadata o@(Object obj) = case H.lookup "id" obj of
