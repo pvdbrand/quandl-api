@@ -313,7 +313,7 @@ createUrl options items =
                         _           -> param      ("columns", createColumns items)
         query = column ++
                 concatMap maybeParam [
-                    ("auth_token",     opAuthToken),
+                    ("api_key",        opAuthToken),
                     ("rows",           fmap show . opNumRows),
                     ("trim_start",     fmap show . opStartDate),
                     ("trim_end",       fmap show . opEndDate),
